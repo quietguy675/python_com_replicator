@@ -10,6 +10,7 @@ import telnetlib
 import string
 import socket
 import threading
+import argparse
 from time import sleep
 
 ###########
@@ -234,10 +235,7 @@ class telnetEjectThread(threading.Thread):
                 exit_flag = 1
         print("Stopping self-destruct thread {}".format(self.name))
 
-def telnet_server():
-    HOST = ""
-    PORT = 23
-    COM_PORT = "COM2"
+def telnet_server(host="", telnet_port=22, com_port="COM2"):
     net_lock = threading.Lock()
     ser_lock = threading.Lock()
 
@@ -249,17 +247,17 @@ def telnet_server():
 
         #Bind socket to local host and port
         try:
-            s.bind((HOST, PORT))
+            s.bind((host, telnet_port))
         except OSError as e:
             print('Bind failed. Error Code : {}'.format(e))
             sys.exit(1)
 
-        print('Socket bind on port {} complete'.format(PORT))
+        print('Socket bind on port {} complete'.format(telnet_port))
      
         #Start listening on socket
         s.listen(10)
         print('Socket now listening')
-        print('Waiting on first telnet connection to open {} serial port'.format(COM_PORT))
+        print('Waiting on first telnet connection to open {} serial port'.format(com_port))
         global net_threads
         net_threads = []
         ser_threads = []
@@ -278,11 +276,11 @@ def telnet_server():
             print('Connected with {}: {}\n'.format(addr[0], addr[1]))
             if first_connect:
                 # Telnet thread to help kick us out, only spawn on first connect
-                telthread = telnetEjectThread(PORT, net_threads, ser_threads)
+                telthread = telnetEjectThread(telnet_port, net_threads, ser_threads)
                 telthread.start()
                 tel_threads.append(telthread)
                 # COM port thread, only spawn on first connect
-                serthread = serToNetThread(COM_PORT, net_threads, net_lock, ser_threads, ser_lock)
+                serthread = serToNetThread(com_port, net_threads, net_lock, ser_threads, ser_lock)
                 serthread.start()
                 ser_threads.append(serthread)
 
@@ -305,7 +303,13 @@ def telnet_server():
         s.close()
 
 if __name__ == "__main__":
-    # someapp().mainloop()
     print(sys.version)
-    telnet_server()
+    parser = argparse.ArgumentParser(description='COM port to multiple telnet replicator')
+    parser.add_argument('telnet_port', metavar='telnet_port', type=int, help='Telnet Port Number')
+    parser.add_argument('com_port', metavar='com_port', type=str, help='COM port, ex: COM2')
+    args = parser.parse_args()
+    # print(args.telnet_port, isinstance(args.telnet_port, int))
+    # print(args.com_port)
+    # exit(0)
+    telnet_server(telnet_port=args.telnet_port, com_port=args.com_port)
     exit(0)
